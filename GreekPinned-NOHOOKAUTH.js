@@ -255,10 +255,11 @@ async function main() {
 	updatePinned();
 	recipes = JSON.parse((localStorage.getItem('recipes')) ?? '{}');
 	let pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
-  let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-  let itemSet = new Set(items.map(item => item.text));
-  let spells = [];
-  let spellSet = new Set(spells.map(spell => spell.result));
+	let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+	let itemSet = new Set(items.map(item => item.text));
+	let spells = [];
+	let spellSet = new Set(spells.map(spell => spell.result));
+	let addToDatabase = 0;
   //i = 0;
   while ( true ) {
 	  //while (i < 3) {
@@ -304,24 +305,9 @@ async function main() {
         });
 	  }
 		
-        
+        addElementToCrafts(a, b, combination.result);
 		if (!spellSet.has(combination.result)) {
-			
-		addElementToCrafts(a, b, combination.result);
-
-		spellSet.add(combination.result);
-		//spells[combination.result]= [{text: a.text, emoji: a.emoji},
-		//{text: b.text, emoji:  b.emoji }];
-		spells.push({
-			result: combination.result,
-			first: a.text,
-			second: b.text,
-			});
-		//}else{
-		//spells[combination.result].push([{text: a.text, emoji: a.emoji},
-		//{text: b.text, emoji:  b.emoji } ])
-		//recipes = JSON.parse(localStorage.getItem('recipes'));
-		//}
+		
 
         //const newStorageItem = JSON.stringify({ elements: items, recipes: {}});
         //localStorage.setItem('infinite-craft-data', newStorageItem);
