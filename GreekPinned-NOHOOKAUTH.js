@@ -2,7 +2,7 @@ const WEBHOOK = "<YOURWEBHOOK>";
 
 const MAX_LENGTH = 1900;
 const FILENAME =
-    'GreekPinned_InfiniteCraft.json';
+    'GreekPinned_InfititeCraft.json';
 	
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -21,7 +21,7 @@ class Logger {
             this.buffer = [this.buffer[this.buffer.length - 1]];
             this.length = this.buffer[0].length;
             try {
-                this.send(itemsToSend);
+                //this.send(itemsToSend); //DISABLED BY DEFFAULT IF YOU WANT TO USE UNCOMMENT THIS LINE AFTER FILLING IN YOURWEBHOOK on the first line.
             } catch (error) {
                 throw error;
             }
@@ -34,6 +34,8 @@ class Logger {
             console.log('Buffer to sent.');
             this.send(itemsToSend);
             console.log('Buffer sent.');
+			this.buffer = [];
+			this.length = 0;
         }
     }
 
@@ -62,7 +64,7 @@ class Logger {
     }
 }
 
-const logger = new Logger(WEBHOOK_IRAKLEITOS);
+const logger = new Logger(WEBHOOK);
 
 const DEFAULT_ITEMS = [
     {text: 'Νερό', emoji: '💦', discovered: false},
@@ -212,12 +214,20 @@ function hasWhiteSpace(s) {
     return s.indexOf(' ') >= 0;
 }
 
-await function resetPinned() {
+async function resetPinned() {
     let pinnedElements = [];
-const  items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+	items = [];
 	let itemSet = new Set(items.map(item => item.text));
+	
+const  itemsInput = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
      
-	for (element of items) {
+	for (element of itemsInput) {
+		if (itemSet.has(element.text)) continue;
+		items.push({
+		    text: element.text,
+		    emoji: element.emoji ?? "□",
+		    discovered: element.discovered,
+		});
         if (hasWhiteSpace(element.text)) continue;
 		notGreek = false;
 		 for (let i = 0; i < element.text.length; i++) {
@@ -242,6 +252,8 @@ const  items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements
 
     }
     localStorage.setItem('pinned', JSON.stringify(pinnedElements));
+	const newStorageItem = JSON.stringify({ elements:  items });
+	localStorage.setItem('infinite-craft-data', newStorageItem);
 }
 
 async function updatePinned() {
@@ -304,14 +316,15 @@ async function saveJSON() {
 }
 
 async function main() {
-    resetCrafts();
-	resetPinned();
-    updatePinned();
-    let pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
-    let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-    let itemSet = new Set(items.map(item => item.text));
-    let addToDatabase = 0;
+    await resetCrafts();
     //i = 0;
+	while (true) {
+		await resetPinned();
+		await updatePinned();
+		pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
+		let pinnedSet = new Set(pinnedElements.map(item => item.text));
+		    let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+    let itemSet = new Set(items.map(item => item.text));
     while (true) {
         //while (i < 3) {
         const b = randomItem(pinned);
@@ -368,7 +381,7 @@ async function main() {
                         elements: items
                     });
                     localStorage.setItem('infinite-craft-data', newStorageItem);
-                    updatePinned();
+                    await updatePinned();
 					
 					                await saveJSON();
 
@@ -399,7 +412,7 @@ async function main() {
                                 }
 					}
 
-                await saveJSON();
+               
             }else{
 				var foundIndex = items.findIndex(x => x.text == combination.result);
 				if (items[foundIndex].emoji !== "□"){}else{
@@ -426,7 +439,10 @@ async function main() {
         }
     }
     logger.sendBuffer();
-
+// await saveJSON(); //DISABLED BY DEFFAULT, uncomment if you want to save the JSON file.
+	console.log('Wait 1 min');
+	await delay(60000);
 }
+	}
 
 main();
