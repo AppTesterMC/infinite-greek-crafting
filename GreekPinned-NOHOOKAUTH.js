@@ -216,82 +216,91 @@ function hasWhiteSpace(s) {
 
 async function resetPinned() {
     let pinnedElements = [];
-	items = [];
-	let itemSet = new Set(items.map(item => item.text));
-	
-const  itemsInput = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-     
-	for (element of itemsInput) {
-		if (itemSet.has(element.text)) continue;
-		items.push({
-		    text: element.text,
-		    emoji: element.emoji ?? "□",
-		    discovered: element.discovered,
-		});
-        if (hasWhiteSpace(element.text)) continue;
-		notGreek = false;
-		 for (let i = 0; i < element.text.length; i++) {
-		if (element.text[i].charCodeAt(0) < 900) {
-			notGreek = true;
-			break;
-			}
-		}
-		if (notGreek) continue;
-            let checkedItem = await spellcheck(element.text);
-            let isNotValidWord = (checkedItem.errors.length > 0);
-            if (isNotValidWord){
-				console.log(`Word ${element.text} is NOT valid Greek/English!`);
-				continue;
-			}
-			console.log(`Word ${element.text} is valid Greek/English!`);
+    let items = [];
+    let itemSet = new Set(items.map(item => item.text));
+
+    const itemsInput = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+    let duplicate = 0;
+    let count = 0;
+    let pinnedCounts = 0;
+    for (element of itemsInput) {
+        if (itemSet.has(element.text)) {
+            duplicate++;
+            continue;
+        }
+        items.push({
+            text: element.text,
+            emoji: element.emoji ?? "□",
+            discovered: element.discovered,
+        });
+        count++;
+        if (hasWhiteSpace(element.text))
+            continue;
+        notGreek = false;
+        for (let i = 0; i < element.text.length; i++) {
+            if (element.text[i].charCodeAt(0) < 900) {
+                notGreek = true;
+                break;
+            }
+        }
+        if (notGreek)
+            continue;
+        let checkedItem = await spellcheck(element.text);
+        let isNotValidWord = (checkedItem.errors.length > 0);
+        if (isNotValidWord) {
+            //console.log(`Word ${element.text} is NOT valid Greek/English!`);
+            continue;
+        }
+        //console.log(`Word ${element.text} is valid Greek/English!`);
         pinnedElements.push({
             text: element.text,
             discovered: element.discovered,
             emoji: element.emoji,
         });
+        pinnedCounts++;
 
     }
+    console.log(`${duplicate.toString()} duplicate elements found`);
     localStorage.setItem('pinned', JSON.stringify(pinnedElements));
-	const newStorageItem = JSON.stringify({ elements:  items });
-	localStorage.setItem('infinite-craft-data', newStorageItem);
+    console.log(`${pinnedCounts.toString()} elements pinned`);
+    const newStorageItem = JSON.stringify({
+        elements: items
+    });
+    localStorage.setItem('infinite-craft-data', newStorageItem);
+    console.log(`${count.toString()} elements stored`);
+    await delay(5000);
 }
 
-async function updatePinned() {
-    const items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-     let pinnedElements = JSON.parse(localStorage.getItem('pinned')) ?? DEFAULT_ITEMS;
-	let pinnedSet = new Set(pinnedElements.map(item => item.text));
-	let itemSet = new Set(items.map(item => item.text));
-	for (element of items) {
-		if (hasWhiteSpace(element.text)) continue;
-		if (!pinnedSet.has(element.text)){
-		if (!itemSet.has(element.text)){
-		notGreek = false;
-		 for (let i = 0; i < element.text.length; i++) {
-		if (element.text[i].charCodeAt(0) < 900) {
-			notGreek = true;
-			break;
-			}
-		}
-		}else{
-			notGreek = true;
-		}
-		if (notGreek) continue;
-            let checkedItem = await spellcheck(element.text);
-            let isNotValidWord = (checkedItem.errors.length > 0);
-            if (isNotValidWord){
-//console.log(`Word ${element.text} is NOT valid Greek/English!`);
-				continue;
-			}
-			//console.log(`Word ${element.text} is valid Greek/English!`);
-        pinnedElements.push({
-            text: element.text,
-            emoji: element.emoji,
-			discovered: element.discovered,
-        });
+async function updatePinned(element) {
+    let pinnedElements = JSON.parse(localStorage.getItem('pinned')) ?? DEFAULT_ITEMS;
+    let pinnedSet = new Set(pinnedElements.map(item => item.text));
+    if (!hasWhiteSpace(element.text)) {
+        if (!pinnedSet.has(element.text)) {
+            let notGreek = false;
+            for (let i = 0; i < element.text.length; i++) {
+                if (element.text[i].charCodeAt(0) < 900) {
+                    notGreek = true;
+                    break;
+                }
+            }
 
-		}
-	}
-    localStorage.setItem('pinned', JSON.stringify(pinnedElements));
+            if (!notGreek) {
+                let checkedItem = await spellcheck(element.text);
+                let isNotValidWord = (checkedItem.errors.length > 0);
+                if (!isNotValidWord) {
+
+                    pinnedElements.push({
+                        text: element.text,
+                        emoji: element.emoji,
+                        discovered: element.discovered,
+                    });
+
+                    console.log(`Word ${element.text} has been added to pinned!`);
+                    localStorage.setItem('pinned', JSON.stringify(pinnedElements));
+                }
+            }
+        }
+    }
 }
 
 async function saveJSON() {
@@ -317,132 +326,140 @@ async function saveJSON() {
 
 async function main() {
     await resetCrafts();
-    //i = 0;
-	while (true) {
-		await resetPinned();
-		await updatePinned();
-		pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
-		let pinnedSet = new Set(pinnedElements.map(item => item.text));
-		    let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-    let itemSet = new Set(items.map(item => item.text));
+    let firstRun = true;
     while (true) {
-        //while (i < 3) {
-        const b = randomItem(pinned);
-        const a = randomItem(pinned);
-        try {
-            const combination = await combine(a, b);
-            if (combination.result !== 'Nothing') {
-                if (!itemSet.has(combination.result)) {
-                    const words = combination.result.split(" ");
-                    for (const word of words) {
-                        //console.log(word);
-                        if (word.length < 2) {
-                            const codePoint = word.codePointAt(0).toString(16);
-							console.log(`Character ${word} is Codepoint U+${codePoint}.`);
-							await delay(60);
-                                console.log("Waited 60ms");
-								try{
-								logger.log(`Character ${word} is Codepoint U+${codePoint}.`);
-								}catch(error){ 
-								console.log('Message sending failed.');
-                                    console.log(error);
-								}
-                        }
-                        if (!itemSet.has(word)) {
-                            let checkedItem = await spellcheck(word);
-                            let isNotGreek = (checkedItem.errors.length > 0);
-                            if (isNotGreek) {
-									console.log(`Word ${word} is NOT valid Greek/English!`);
-                                //let suggestions = checkedItem.errors[0].s.join('" ή "');
-                                //console.log(`Μήπως ενννοείς "${suggestions}" ;`);
-                            } else {
-                                console.log(`Word ${word} is valid Greek/English!`);
-                                await delay(60);
-                                console.log("Waited 60ms");
-                                try {
-                                    logger.log(`${a.emoji ?? "□"} ${a.text} + ${b.emoji ?? "□"} ${b.text} = ${combination.emoji ?? "□"} ${combination.result}${combination.isNew ? ". It's a new discovery!" : ""}`);
-                                } catch (error) {
-                                    console.log('Message sending failed.');
-                                    console.log(error);
-                                }
-                            }
-                        }
+        if (firstRun) await resetPinned();
+        let pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
+        let pinnedSet = new Set(pinned.map(item => item.text));
+        let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+        console.log('loaded elements');
+        let itemSet = new Set(items.map(item => item.text));
+        while (true) {
+            //while (i < 3) {
+            const b = randomItem(pinned);
+            const a = randomItem(pinned);
+            try {
+                const combination = await combine(a, b);
+                console.log('Combining pinned elements');
+                if (combination.result !== 'Nothing') {
+                    if (!itemSet.has(combination.result)) {
+
+                        itemSet.add(combination.result);
+						
+						let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+                        items.push({
+                            text: combination.result,
+                            emoji: combination.emoji ?? "□",
+                            discovered: combination.isNew,
+                        });
+
+                        const newStorageItem = JSON.stringify({
+                            elements: items
+                        });
+
+                        localStorage.setItem('infinite-craft-data', newStorageItem);
+                        await updatePinned({text: combination.result,                             emoji: combination.emoji ?? "□",
+                            discovered: combination.isNew});
+						pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
+                        //await saveJSON(); //Because new element
                     }
 
-                    itemSet.add(combination.result);
+                    if (combination.result !== a.text) {
+                        if (combination.result !== b.text) {
 
-                    items.push({
-                        text: combination.result,
-                        emoji: combination.emoji ?? "□",
-                        discovered: combination.isNew,
-                    });
+                            addElementToCrafts(a, b, combination.result);
 
-                    const newStorageItem = JSON.stringify({
-                        elements: items
-                    });
-                    localStorage.setItem('infinite-craft-data', newStorageItem);
-                    await updatePinned();
-					
-					                await saveJSON();
+                            console.log(`${a.emoji ?? "□"} ${a.text} + ${b.emoji ?? "□"} ${b.text} = ${combination.emoji ?? "□"} ${combination.result}${combination.isNew ? ". It's a new discovery!" : ""}`);
 
-                items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
-                pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
-                }
-				if (combination.result !== a.text) {
-					if (combination.result !== b.text) {
-				
-                addElementToCrafts(a, b, combination.result);
-
-                console.log(`${a.emoji ?? "□"} ${a.text} + ${b.emoji ?? "□"} ${b.text} = ${combination.emoji ?? "□"} ${combination.result}${combination.isNew ? ". It's a new discovery!" : ""}`);
-								let isNotGreek = false;
-				const words = combination.result.split(" ");
-                    for (const word of words) {
-				let checkedItem = await spellcheck(word);
-                            let isNotGreek = (checkedItem.errors.length > 0);
-                            if (isNotGreek) break;
-					}
-					if (!isNotGreek){
-					await delay(60);
-                                console.log("Waited 60ms");
-                                try {
-                                    logger.log(`${a.emoji ?? "□"} ${a.text} + ${b.emoji ?? "□"} ${b.text} = ${combination.emoji ?? "□"} ${combination.result}${combination.isNew ? ". It's a new discovery!" : ""}`);
-                                } catch (error) {
-                                    console.log('Message sending failed.');
-                                    console.log(error);
+                            const words = combination.result.split(" ");
+                            for (const word of words) {
+                                //Character logging
+                                if (word.length < 2) {
+                                    const codePoint = word.codePointAt(0).toString(16);
+                                    console.log(`Character ${word} is Codepoint U+${codePoint}.`);
+                                    await delay(60);
+                                    console.log("Waited 60ms");
+                                    try {
+                                        logger.log(`Character ${word} is Codepoint U+${codePoint}.`);
+                                    } catch (error) {
+                                        console.log('Message sending failed.');
+                                        console.log(error);
+                                    }
                                 }
-					}
+                                //Valid words logging
+                                let checkedItem = await spellcheck(word);
+                                let isNotGreek = (checkedItem.errors.length > 0);
+                                if (isNotGreek) {
+                                    console.log(`Word ${word} is NOT valid Greek/English!`);
+                                    //let suggestions = checkedItem.errors[0].s.join('" ή "');
+                                    //console.log(`Μήπως ενννοείς "${suggestions}" ;`);
+                                } else {
+                                    console.log(`Word ${word} is valid Greek/English!`);
+                                    await delay(60);
+                                    console.log("Waited 60ms");
+                                    try {
+                                        logger.log(`${a.emoji ?? "□"} ${a.text} + ${b.emoji ?? "□"} ${b.text} = ${combination.emoji ?? "□"} ${combination.result}${combination.isNew ? ". It's a new discovery!" : ""}`);
+                                    } catch (error) {
+                                        console.log('Message sending failed.');
+                                        console.log(error);
+                                    }
+                                }
+                            }
+                            //await saveJSON(); //Because new recipe
+                        } else {
+							let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+                            var foundIndex = items.findIndex(x => x.text == combination.result);
+                            if (items[foundIndex].emoji !== "□") {}
+                            else {
+                                items[foundIndex].emoji = combination.emoji;
+                                const newStorageItem = JSON.stringify({
+                                    elements: items
+                                });
 
-               
-            }else{
-				var foundIndex = items.findIndex(x => x.text == combination.result);
-				if (items[foundIndex].emoji !== "□"){}else{
-				items[foundIndex].emoji = combination.emoji;
-				}
-			}
-				}else{
-				var foundIndex = items.findIndex(x => x.text == combination.result);
-				if (items[foundIndex].emoji !== "□"){}else{
-				items[foundIndex].emoji = combination.emoji;
-				}
-			}
-			}
-            await new Promise(resolve => setTimeout(resolve, 500));
+                                localStorage.setItem('infinite-craft-data', newStorageItem);
+                                //await saveJSON(); //Because fixed emoji
 
-            //i++;
+                            }
+                        }
+                    } else {
+						let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+                        var foundIndex = items.findIndex(x => x.text == combination.result);
+                        if (items[foundIndex].emoji !== "□") {}
+                        else {
+							let items = JSON.parse(localStorage.getItem('infinite-craft-data'))?.elements ?? DEFAULT_ITEMS;
+                            items[foundIndex].emoji = combination.emoji;
+                            const newStorageItem = JSON.stringify({
+                                elements: items
+                            });
 
-        } catch (error) {
+                            localStorage.setItem('infinite-craft-data', newStorageItem);
+                            //await saveJSON(); //Because fixed emoji
+                        }
+                    }
+                }
+                await new Promise(resolve => setTimeout(resolve, 500));
 
-            console.log('Exiting loop.');
-            console.log(error)
-            break;
+                //i++;
 
+            } catch (error) {
+                const newStorageItem = JSON.stringify({
+                    elements: items
+                });
+
+                localStorage.setItem('infinite-craft-data', newStorageItem);
+                //await saveJSON();
+                pinned = JSON.parse((localStorage.getItem('pinned'))) ?? DEFAULT_ITEMS;
+                console.log('Exiting loop.');
+                console.log(error)
+                break;
+
+            }
         }
+        logger.sendBuffer();
+        console.log('Wait 1 min');
+        await delay(60000);
+        firstRun = false;
     }
-    logger.sendBuffer();
-// await saveJSON(); //DISABLED BY DEFFAULT, uncomment if you want to save the JSON file.
-	console.log('Wait 1 min');
-	await delay(60000);
 }
-	}
 
 main();
